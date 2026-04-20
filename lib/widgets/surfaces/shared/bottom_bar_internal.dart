@@ -104,101 +104,97 @@ class BottomBarTabItem extends StatelessWidget {
     final iconColor = selected ? selectedIconColor : unselectedIconColor;
     final iconWidget = selected ? (tab.activeIcon ?? tab.icon) : tab.icon;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: tab.label ?? 'Tab',
-        child: SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              spacing: iconLabelSpacing,
-              children: [
-                ExcludeSemantics(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      if (tab.glowColor != null)
-                        Positioned(
-                          top: -24,
-                          right: -24,
-                          left: -24,
-                          bottom: -24,
-                          child: RepaintBoundary(
-                            child: AnimatedContainer(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: tab.label ?? 'Tab',
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            spacing: iconLabelSpacing,
+            children: [
+              ExcludeSemantics(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    if (tab.glowColor != null)
+                      Positioned(
+                        top: -24,
+                        right: -24,
+                        left: -24,
+                        bottom: -24,
+                        child: RepaintBoundary(
+                          child: AnimatedContainer(
+                            duration: glowDuration,
+                            transformAlignment: Alignment.center,
+                            curve: Curves.easeOutCirc,
+                            transform: selected
+                                ? Matrix4.identity()
+                                : (Matrix4.identity()
+                                  ..scale(0.4)
+                                  ..rotateZ(-math.pi)),
+                            child: AnimatedOpacity(
                               duration: glowDuration,
-                              transformAlignment: Alignment.center,
-                              curve: Curves.easeOutCirc,
-                              transform: selected
-                                  ? Matrix4.identity()
-                                  : (Matrix4.identity()
-                                    ..scale(0.4)
-                                    ..rotateZ(-math.pi)),
-                              child: AnimatedOpacity(
-                                duration: glowDuration,
-                                opacity: selected ? 1 : 0,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: tab.glowColor!.withOpacity(
-                                          selected ? glowOpacity : 0,
-                                        ),
-                                        blurRadius: glowBlurRadius,
-                                        spreadRadius: glowSpreadRadius,
+                              opacity: selected ? 1 : 0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: tab.glowColor!.withOpacity(
+                                        selected ? glowOpacity : 0,
                                       ),
-                                    ],
-                                  ),
+                                      blurRadius: glowBlurRadius,
+                                      spreadRadius: glowSpreadRadius,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      IconTheme(
-                        data: IconThemeData(
-                          color: iconColor,
-                          size: iconSize,
-                          // Use the extracted top-level function for testability
-                          shadows: buildIconShadows(
-                            iconColor: iconColor,
-                            thickness: tab.thickness,
-                            selected: selected,
-                            activeIcon: tab.activeIcon,
-                          ),
-                        ),
-                        child: DefaultTextStyle(
-                          style: DefaultTextStyle.of(context)
-                              .style
-                              .copyWith(color: iconColor),
-                          child: iconWidget,
+                      ),
+                    IconTheme(
+                      data: IconThemeData(
+                        color: iconColor,
+                        size: iconSize,
+                        // Use the extracted top-level function for testability
+                        shadows: buildIconShadows(
+                          iconColor: iconColor,
+                          thickness: tab.thickness,
+                          selected: selected,
+                          activeIcon: tab.activeIcon,
                         ),
                       ),
-                    ],
-                  ),
+                      child: DefaultTextStyle(
+                        style: DefaultTextStyle.of(context)
+                            .style
+                            .copyWith(color: iconColor),
+                        child: iconWidget,
+                      ),
+                    ),
+                  ],
                 ),
-                if (tab.label != null)
-                  Text(
-                    tab.label!,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: textStyle ??
-                        TextStyle(
-                          color: iconColor,
-                          fontSize: labelFontSize,
-                          fontWeight:
-                              selected ? FontWeight.w600 : FontWeight.w500,
-                        ),
-                  ),
-              ],
-            ),
+              ),
+              if (tab.label != null)
+                Text(
+                  tab.label!,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyle ??
+                      TextStyle(
+                        color: iconColor,
+                        fontSize: labelFontSize,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                ),
+            ],
           ),
         ),
       ),
@@ -319,11 +315,12 @@ class TabIndicatorState extends State<TabIndicator> {
   static const _fallbackIndicatorColor =
       Color(0x1AFFFFFF); // white.withValues(alpha: 0.1)
 
-  bool _isDown = false;
   bool _isDragging = false;
 
+  late int _targetTabIndex = widget.tabIndex;
+
   // Current horizontal alignment of the indicator (-1 to 1)
-  late double _xAlign = _computeXAlignmentForTab(widget.tabIndex);
+  late double _xAlign = _computeXAlignmentForTab(_targetTabIndex);
 
   // Cached shape to avoid recreation on every animation frame
   late LiquidRoundedSuperellipse _barShape =
@@ -365,84 +362,52 @@ class TabIndicatorState extends State<TabIndicator> {
     );
   }
 
-  void _onDragDown(DragDownDetails details) {
-    setState(() {
-      _isDown = true;
-    });
-  }
-
-  /// DX1: Fires on any tap-down (no drag) anywhere on the bar.
-  ///
-  /// On macOS/desktop a click arrives as tapDown+tapUp in the same frame,
-  /// so the previous approach of snapping `_xAlign` immediately collapsed the
-  /// spring travel distance to zero — no velocity, no jelly.
-  ///
-  /// Fix: Do NOT snap `_xAlign`. Instead:
-  ///   1. Fire `onTabChanged` so the parent updates `selectedIndex`.
-  ///   2. Set `_isDown = true` to activate thickness.
-  ///   3. Keep `_isDown` true for the spring travel duration (~350 ms) so
-  ///      the jelly deformation is visible throughout the animation.
-  ///
-  /// `didUpdateWidget` will update `_xAlign` when the parent rebuilds with
-  /// the new `tabIndex`, and `VelocitySpringBuilder` will spring from the
-  /// old alignment to the new one — generating real velocity + jelly.
-  void _onBarTapDown(TapDownDetails details) {
-    final alignment = _getAlignmentFromGlobalPosition(details.globalPosition);
-    final relativeX = (alignment + 1) / 2;
-    final index =
-        (relativeX * widget.tabCount).floor().clamp(0, widget.tabCount - 1);
-
-    // Fire parent callback immediately so selectedIndex updates in the
-    // same frame, triggering didUpdateWidget → spring animation.
-    if (index != widget.tabIndex) {
-      widget.onTabChanged(index);
-    }
-
-    // DX1: _isDown is set by Listener.onPointerDown (raw, fires before any
-    // gesture recognizer). No timer needed — Listener.onPointerUp clears it
-    // when the pointer is released. Spring separation keeps the indicator
-    // visible during animation even when tapUp arrives in the same frame.
-  }
-
-  void _onDragUpdate(DragUpdateDetails details) {
+  void _setDragging(Offset globalPosition) {
     setState(() {
       _isDragging = true;
-      _xAlign = _getAlignmentFromGlobalPosition(details.globalPosition);
+      _xAlign = _getAlignmentFromGlobalPosition(globalPosition);
     });
   }
+
+  void _onDragDown(DragDownDetails details) =>
+      _setDragging(details.globalPosition);
+
+  void _onDragStart(DragStartDetails details) =>
+      _setDragging(details.globalPosition);
+
+  void _onDragUpdate(DragUpdateDetails details) =>
+      _setDragging(details.globalPosition);
 
   void _onDragEnd(DragEndDetails details) {
     setState(() {
       _isDragging = false;
-      _isDown = false;
+      _xAlign = _getAlignmentFromGlobalPosition(details.globalPosition);
+      final currentRelativeX = (_xAlign + 1) / 2;
+      final tabWidth = 1.0 / widget.tabCount;
+      _targetTabIndex = _computeTargetTab(
+        currentRelativeX: currentRelativeX,
+        velocityX: 0,
+        tabWidth: tabWidth,
+      );
+      _xAlign = _computeXAlignmentForTab(_targetTabIndex);
+      print('拖动End: $_targetTabIndex');
+      widget.onTabChanged(_targetTabIndex);
     });
+  }
 
-    final box = context.findRenderObject()! as RenderBox;
-
-    // Convert alignment to 0-1 range
+  void _onDragCancel() {
     final currentRelativeX = (_xAlign + 1) / 2;
     final tabWidth = 1.0 / widget.tabCount;
-
-    // Calculate velocity in relative units
-    final indicatorWidth = 1.0 / widget.tabCount;
-    final draggableRange = 1.0 - indicatorWidth;
-    final velocityX =
-        (details.velocity.pixelsPerSecond.dx / box.size.width) / draggableRange;
-
-    // Determine target tab based on position and velocity
-    final targetTabIndex = _computeTargetTab(
-      currentRelativeX: currentRelativeX,
-      velocityX: velocityX,
-      tabWidth: tabWidth,
-    );
-
-    // Update alignment to target tab
-    _xAlign = _computeXAlignmentForTab(targetTabIndex);
-
-    // Notify parent if tab changed
-    if (targetTabIndex != widget.tabIndex) {
-      widget.onTabChanged(targetTabIndex);
-    }
+    setState(() {
+      _isDragging = false;
+      _targetTabIndex = _computeTargetTab(
+        currentRelativeX: currentRelativeX,
+        velocityX: 0,
+        tabWidth: tabWidth,
+      );
+      print('拖动Cancel: $_targetTabIndex');
+      widget.onTabChanged(_targetTabIndex);
+    });
   }
 
   /// Computes the target tab index based on drag position and velocity.
@@ -465,8 +430,6 @@ class TabIndicatorState extends State<TabIndicator> {
     final indicatorColor = widget.indicatorColor ??
         theme.textTheme.textStyle.color?.withValues(alpha: .1) ??
         _fallbackIndicatorColor;
-    final targetAlignment = _computeXAlignmentForTab(widget.tabIndex);
-
     // AnimatedGlassIndicator multiplies by 2 for the glass superellipse shape,
     // but uses the value directly for the background DecoratedBox.
     final backgroundRadius = widget.barBorderRadius * 2; // 64
@@ -474,146 +437,93 @@ class TabIndicatorState extends State<TabIndicator> {
         widget.barBorderRadius; // 32 → becomes 64 after internal *2
 
     return LiquidStretch(
-        interactionScale: widget.interactionScale,
-        stretch: 0.0,
-        resistance: 0.08,
-        child: Listener(
-          // Raw pointer events fire BEFORE gesture recognizers and never compete
-          // in the gesture arena, so _isDown is always set on the very first event.
-          onPointerDown: (_) {
-            setState(() => _isDown = true);
-          },
-          // On finger/button lift, clear _isDown if not mid-drag.
-          // Listener fires regardless of which gesture recognizer won the arena.
-          onPointerUp: (_) {
-            if (!_isDragging) {
-              setState(() => _isDown = false);
-            }
-          },
-          onPointerCancel: (_) {
-            if (!_isDragging) {
-              setState(() => _isDown = false);
-            }
-          },
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragDown: _onDragDown,
-            onHorizontalDragUpdate: _onDragUpdate,
-            onHorizontalDragEnd: _onDragEnd,
-            // On cancel (e.g. parent scroll steals the gesture or pointer goes
-            // off-screen), _isDown is cleared by the Listener when pointer lifts.
-            // Only snap _xAlign — never set _isDown from here.
-            onHorizontalDragCancel: () {
-              if (_isDragging) {
-                // Mid-drag cancel: snap to nearest tab from current position.
-                final currentRelativeX = (_xAlign + 1) / 2;
-                final tabWidth = 1.0 / widget.tabCount;
-                final targetTabIndex = _computeTargetTab(
-                  currentRelativeX: currentRelativeX,
-                  velocityX: 0,
-                  tabWidth: tabWidth,
-                );
-                setState(() {
-                  _isDragging = false;
-                  _isDown = false;
-                  _xAlign = _computeXAlignmentForTab(targetTabIndex);
-                });
-                if (targetTabIndex != widget.tabIndex) {
-                  widget.onTabChanged(targetTabIndex);
-                }
-              } else {
-                // Not dragging (e.g. same-tab click): reset _xAlign to tab center
-                // so the indicator sits exactly on the tab, not at the raw click
-                // position that _onDragDown snapped to.
-                setState(
-                    () => _xAlign = _computeXAlignmentForTab(widget.tabIndex));
-                // _isDown intentionally NOT cleared — Listener.onPointerUp owns that.
-              }
-            },
-            onTapDown:
-                _onBarTapDown, // DX1: makes jelly visible on desktop taps
-            child: VelocitySpringBuilder(
-              value: _xAlign,
-              springWhenActive: GlassSpring.interactive(),
-              springWhenReleased: GlassSpring.snappy(
-                duration: const Duration(milliseconds: 350),
+      interactionScale: widget.interactionScale,
+      stretch: 0.0,
+      resistance: 0.08,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragDown: _onDragDown,
+        onHorizontalDragStart: _onDragStart,
+        onHorizontalDragUpdate: _onDragUpdate,
+        onHorizontalDragEnd: _onDragEnd,
+        onHorizontalDragCancel: _onDragCancel,
+        child: VelocitySpringBuilder(
+          value: _xAlign,
+          springWhenActive: GlassSpring.interactive(),
+          springWhenReleased: GlassSpring.snappy(
+            duration: const Duration(milliseconds: 350),
+          ),
+          active: _isDragging,
+          builder: (context, value, velocity, child) {
+            final alignment = Alignment(value, 0);
+            return SpringBuilder(
+              spring: GlassSpring.snappy(
+                duration: const Duration(milliseconds: 300),
               ),
-              active: _isDragging,
-              builder: (context, value, velocity, child) {
-                final alignment = Alignment(value, 0);
+              // Keep thickness active while:
+              //  - _isDown (tap pressed, 420 ms window for spring travel), OR
+              //  - the spring still has meaningful separation from target.
+              // Threshold 0.05 (was 0.10) catches the full deceleration tail.
+              value: widget.visible && _isDragging ? 1.0 : 0.0,
+              builder: (context, thickness, child) {
+                // Lazy evaluation optimization: skip expensive calculations when hidden
+                if (thickness < 0.01 &&
+                    !widget.visible &&
+                    widget.maskingQuality == MaskingQuality.high) {
+                  // Fast path: indicator is hidden, render simple layout
+                  return Container(
+                    height: widget.barHeight,
+                    decoration: ShapeDecoration(
+                      shape: _barShape,
+                    ),
+                    child: AdaptiveGlass.grouped(
+                      quality: widget.quality,
+                      shape: _barShape,
+                      child: Container(
+                        padding: widget.tabPadding,
+                        child: widget.childUnselected,
+                      ),
+                    ),
+                  );
+                }
 
-                return SpringBuilder(
-                  spring: GlassSpring.snappy(
-                    duration: const Duration(milliseconds: 300),
-                  ),
-                  // Keep thickness active while:
-                  //  - _isDown (tap pressed, 420 ms window for spring travel), OR
-                  //  - the spring still has meaningful separation from target.
-                  // Threshold 0.05 (was 0.10) catches the full deceleration tail.
-                  value: widget.visible &&
-                          (_isDown ||
-                              (alignment.x - targetAlignment).abs() > 0.05)
-                      ? 1.0
-                      : 0.0,
-                  builder: (context, thickness, child) {
-                    // Lazy evaluation optimization: skip expensive calculations when hidden
-                    if (thickness < 0.01 &&
-                        !widget.visible &&
-                        widget.maskingQuality == MaskingQuality.high) {
-                      // Fast path: indicator is hidden, render simple layout
-                      return Container(
-                        height: widget.barHeight,
-                        decoration: ShapeDecoration(
-                          shape: _barShape,
-                        ),
-                        child: AdaptiveGlass.grouped(
-                          quality: widget.quality,
-                          shape: _barShape,
-                          child: Container(
-                            padding: widget.tabPadding,
-                            child: widget.childUnselected,
-                          ),
-                        ),
-                      );
-                    }
+                // Calculate jelly transform for the clipper (only when needed)
+                final jellyTransform =
+                    DraggableIndicatorPhysics.buildJellyTransform(
+                  velocity: Offset(velocity, 0),
+                  maxDistortion: 0.8,
+                  velocityScale: 10,
+                );
 
-                    // Calculate jelly transform for the clipper (only when needed)
-                    final jellyTransform =
-                        DraggableIndicatorPhysics.buildJellyTransform(
-                      velocity: Offset(velocity, 0),
-                      maxDistortion: 0.8,
-                      velocityScale: 10,
+                // Switch rendering mode based on masking quality
+                switch (widget.maskingQuality) {
+                  case MaskingQuality.off:
+                    return _buildSimpleMode(
+                      alignment: alignment,
+                      thickness: thickness,
+                      velocity: velocity,
+                      backgroundRadius: backgroundRadius,
+                      glassRadius: glassRadius,
+                      indicatorColor: indicatorColor,
                     );
 
-                    // Switch rendering mode based on masking quality
-                    switch (widget.maskingQuality) {
-                      case MaskingQuality.off:
-                        return _buildSimpleMode(
-                          alignment: alignment,
-                          thickness: thickness,
-                          velocity: velocity,
-                          backgroundRadius: backgroundRadius,
-                          glassRadius: glassRadius,
-                          indicatorColor: indicatorColor,
-                        );
-
-                      case MaskingQuality.high:
-                        return _buildHighQualityMode(
-                          alignment: alignment,
-                          thickness: thickness,
-                          velocity: velocity,
-                          jellyTransform: jellyTransform,
-                          backgroundRadius: backgroundRadius,
-                          glassRadius: glassRadius,
-                          indicatorColor: indicatorColor,
-                        );
-                    }
-                  },
-                ); // SpringBuilder
-              }, // VelocitySpringBuilder builder
-            ), // VelocitySpringBuilder
-          ), // GestureDetector
-        )); // Listener
+                  case MaskingQuality.high:
+                    return _buildHighQualityMode(
+                      alignment: alignment,
+                      thickness: thickness,
+                      velocity: velocity,
+                      jellyTransform: jellyTransform,
+                      backgroundRadius: backgroundRadius,
+                      glassRadius: glassRadius,
+                      indicatorColor: indicatorColor,
+                    );
+                }
+              },
+            ); // SpringBuilder
+          }, // VelocitySpringBuilder builder
+        ), // VelocitySpringBuilder
+      ),
+    ); // Listener
   }
 
   /// Wraps [child] in a [GlassGlow] sensor if the resolved glow color is
