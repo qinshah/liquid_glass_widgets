@@ -317,10 +317,8 @@ class TabIndicatorState extends State<TabIndicator> {
 
   bool _isDragging = false;
 
-  late int _targetTabIndex = widget.tabIndex;
-
   // Current horizontal alignment of the indicator (-1 to 1)
-  late double _xAlign = _computeXAlignmentForTab(_targetTabIndex);
+  late double _xAlign = _computeXAlignmentForTab(widget.tabIndex);
 
   // Cached shape to avoid recreation on every animation frame
   late LiquidRoundedSuperellipse _barShape =
@@ -382,46 +380,18 @@ class TabIndicatorState extends State<TabIndicator> {
     setState(() {
       _isDragging = false;
       _xAlign = _getAlignmentFromGlobalPosition(details.globalPosition);
-      final currentRelativeX = (_xAlign + 1) / 2;
-      final tabWidth = 1.0 / widget.tabCount;
-      _targetTabIndex = _computeTargetTab(
-        currentRelativeX: currentRelativeX,
-        velocityX: 0,
-        tabWidth: tabWidth,
-      );
-      _xAlign = _computeXAlignmentForTab(_targetTabIndex);
-      print('拖动End: $_targetTabIndex');
-      widget.onTabChanged(_targetTabIndex);
+      final relativeX = (_xAlign + 1) / 2;
+      /*
+   relativeX   -  0       ~       1 1+
+                  |               |
+ targetIndex      0, 1, ···, n-1, n
+          */
+      final targetIndex = (relativeX * (widget.tabCount - 1))
+          .round()
+          .clamp(0, widget.tabCount - 1);
+      _xAlign = _computeXAlignmentForTab(targetIndex);
+      widget.onTabChanged(targetIndex);
     });
-  }
-
-  void _onDragCancel() {
-    final currentRelativeX = (_xAlign + 1) / 2;
-    final tabWidth = 1.0 / widget.tabCount;
-    setState(() {
-      _isDragging = false;
-      _targetTabIndex = _computeTargetTab(
-        currentRelativeX: currentRelativeX,
-        velocityX: 0,
-        tabWidth: tabWidth,
-      );
-      print('拖动Cancel: $_targetTabIndex');
-      widget.onTabChanged(_targetTabIndex);
-    });
-  }
-
-  /// Computes the target tab index based on drag position and velocity.
-  int _computeTargetTab({
-    required double currentRelativeX,
-    required double velocityX,
-    required double tabWidth,
-  }) {
-    return DraggableIndicatorPhysics.computeTargetIndex(
-      currentRelativeX: currentRelativeX,
-      velocityX: velocityX,
-      itemWidth: tabWidth,
-      itemCount: widget.tabCount,
-    );
   }
 
   @override
@@ -446,7 +416,6 @@ class TabIndicatorState extends State<TabIndicator> {
         onHorizontalDragStart: _onDragStart,
         onHorizontalDragUpdate: _onDragUpdate,
         onHorizontalDragEnd: _onDragEnd,
-        onHorizontalDragCancel: _onDragCancel,
         child: VelocitySpringBuilder(
           value: _xAlign,
           springWhenActive: GlassSpring.interactive(),
